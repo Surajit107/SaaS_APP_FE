@@ -1,6 +1,7 @@
 const STORAGE_KEY = 'saas:postLogoutTenantLogin';
 
-export type TenantPortalLoginPath = '/tenant/login' | '/tenant/user/login';
+/** Where to send the user after tenant portal session ends (explicit logout uses `/`). */
+export type TenantPortalLoginPath = '/' | '/tenant/login' | '/tenant/user/login';
 
 export function setPostLogoutTenantLoginPath(path: TenantPortalLoginPath): void {
   try {
@@ -20,13 +21,13 @@ export function clearPostLogoutTenantLoginPath(): void {
 }
 
 /**
- * Returns the login path set at tenant logout, then removes it so it applies once.
+ * Returns the redirect path set at tenant logout, then removes it so it applies once.
  */
 export function consumePostLogoutTenantLoginPath(): TenantPortalLoginPath | null {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
     sessionStorage.removeItem(STORAGE_KEY);
-    if (raw === '/tenant/user/login' || raw === '/tenant/login') {
+    if (raw === '/' || raw === '/tenant/user/login' || raw === '/tenant/login') {
       return raw;
     }
   } catch {

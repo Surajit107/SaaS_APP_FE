@@ -294,6 +294,28 @@ code {
     animation: none;
     opacity: 0.55;
   }
+
+  .sandbox-corner-bounce {
+    animation: none;
+  }
+}
+
+/* Home — floating sandbox test card attention hint */
+@keyframes sandbox-corner-bounce {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  45% {
+    transform: translate3d(0, -10px, 0);
+  }
+  55% {
+    transform: translate3d(0, -10px, 0);
+  }
+}
+
+.sandbox-corner-bounce {
+  animation: sandbox-corner-bounce 2.8s ease-in-out infinite;
 }
 
 /* Task board — grab / drag feedback (honors prefers-reduced-motion) */

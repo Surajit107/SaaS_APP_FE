@@ -1,5 +1,5 @@
 import { createAction } from '@reduxjs/toolkit';
-import { all, call, put, select, takeLatest } from 'redux-saga/effects';
+import { all, call, put, takeLatest } from 'redux-saga/effects';
 import { toast } from 'sonner';
 
 import {
@@ -45,7 +45,6 @@ import {
   clearPostLogoutTenantLoginPath,
   setPostLogoutTenantLoginPath,
 } from '@/lib/tenant/postLogoutTenantLogin';
-import type { RootState } from '@/store/store';
 
 export const tenantLoginRequested = createAction<{
   email: string;
@@ -167,10 +166,6 @@ function* handleTenantRegister(
 }
 
 function* handleLogout(): Generator {
-  const tenantRole = (yield select(
-    (s: RootState) => s.tenantAuth.tenantRole,
-  )) as RootState['tenantAuth']['tenantRole'];
-
   let logoutRequestSucceeded = true;
   try {
     const refreshToken = getRefreshToken();
@@ -186,9 +181,7 @@ function* handleLogout(): Generator {
     if (!logoutRequestSucceeded) {
       toast.info('Local session cleared for security');
     }
-    setPostLogoutTenantLoginPath(
-      tenantRole === 'member' ? '/tenant/user/login' : '/tenant/login',
-    );
+    setPostLogoutTenantLoginPath('/');
     yield put(logout());
   }
 }

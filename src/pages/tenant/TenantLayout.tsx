@@ -27,6 +27,7 @@ import {
   clearTenantUpdateError,
   logoutRequested,
 } from '@/features/tenant/slice/tenantAuthSlice';
+import { openStripeCheckoutTabPlaceholder } from '@/lib/stripe/checkoutTab';
 import {
   ManageSubscriptionDialog,
   SubscriptionPlansDialog,
@@ -91,6 +92,7 @@ export function TenantLayout() {
   };
 
   const handlePlanSelect = (stripePriceId: string): void => {
+    openStripeCheckoutTabPlaceholder();
     dispatch(tenantSubscriptionCheckoutRequested({ stripePriceId }));
   };
 
@@ -221,8 +223,10 @@ export function TenantLayout() {
         checkoutPlanId={checkoutPlanId}
         currentStripePriceId={subscription?.stripePriceId ?? null}
         isChecking={isChecking}
+        isLogoutPending={isLogoutPending}
         mode={subscription?.status === 'active' || subscription?.status === 'trialing' ? 'upgrade' : 'subscribe'}
         onClose={closeSubscriptionModal}
+        onLogout={() => dispatch(logoutRequested())}
         onOpenChange={() => {
           // Explicit open requests are controlled by Redux state.
         }}

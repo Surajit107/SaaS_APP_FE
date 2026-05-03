@@ -1,4 +1,5 @@
-import { Sparkles } from 'lucide-react';
+import { useState } from 'react';
+import { CreditCard, LogOut, Sparkles } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -10,6 +11,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import type { BillingPlan } from '@/lib/api/Api';
+import { isSandboxCheckoutCardEnabled } from '@/pages/home/SandboxTestCreditCard';
+import { SandboxTestPaymentSheet } from '@/pages/tenant/components/SandboxTestPaymentSheet';
 import { SubscriptionPlanCard } from '@/pages/tenant/components/subscription/SubscriptionPlanCard';
 import { SubscriptionPlanSkeletonGrid } from '@/pages/tenant/components/subscription/SubscriptionPlanSkeletonGrid';
 
@@ -23,6 +26,8 @@ interface SubscriptionPlansDialogProps {
   onOpenChange: (open: boolean) => void;
   onPlanSelect: (stripePriceId: string) => void;
   onClose: () => void;
+  onLogout: () => void;
+  isLogoutPending?: boolean;
 }
 
 export function SubscriptionPlansDialog({
@@ -35,17 +40,25 @@ export function SubscriptionPlansDialog({
   onOpenChange,
   onPlanSelect,
   onClose,
+  onLogout,
+  isLogoutPending = false,
 }: SubscriptionPlansDialogProps) {
   const isUpgradeFlow = mode === 'upgrade';
   const canDismiss = isUpgradeFlow;
+  const showSandboxTestCard = isSandboxCheckoutCardEnabled();
+  const [sandboxSheetOpen, setSandboxSheetOpen] = useState(false);
 
   return (
+    <>
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
         onOpenChange(nextOpen);
         if (!nextOpen && canDismiss) {
           onClose();
+        }
+        if (!nextOpen) {
+          setSandboxSheetOpen(false);
         }
       }}
     >
@@ -55,16 +68,43 @@ export function SubscriptionPlansDialog({
         onPointerDownOutside={canDismiss ? undefined : (event) => event.preventDefault()}
         showCloseButton={false}
       >
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="text-primary size-5" aria-hidden />
-            {isUpgradeFlow ? 'Upgrade your subscription' : 'Choose your subscription package'}
-          </DialogTitle>
-          <DialogDescription>
-            {isUpgradeFlow
-              ? 'Reuse the same billing flow to switch plans without leaving your workspace.'
-              : 'Pick a plan to continue, including Free. This step cannot be skipped until a plan is selected.'}
-          </DialogDescription>
+        <DialogHeader className="gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <div className="min-w-0 space-y-2 text-left">
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="text-primary size-5 shrink-0" aria-hidden />
+              {isUpgradeFlow ? 'Upgrade your subscription' : 'Choose your subscription package'}
+            </DialogTitle>
+            <DialogDescription>
+              {isUpgradeFlow
+                ? 'Reuse the same billing flow to switch plans without leaving your workspace.'
+                : 'Pick a plan to continue, including Free. This step cannot be skipped until a plan is selected.'}
+            </DialogDescription>
+          </div>
+          <div className="flex shrink-0 items-center gap-2 self-start">
+            {showSandboxTestCard ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => setSandboxSheetOpen(true)}
+              >
+                <CreditCard className="size-4" aria-hidden />
+                Test card
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="text-muted-foreground hover:text-foreground size-9 shrink-0"
+              disabled={isLogoutPending}
+              aria-label={isLogoutPending ? 'Signing out…' : 'Log out'}
+              onClick={onLogout}
+            >
+              <LogOut className="size-4" aria-hidden />
+            </Button>
+          </div>
         </DialogHeader>
 
         {isChecking ? (
@@ -105,5 +145,8 @@ export function SubscriptionPlansDialog({
         ) : null}
       </DialogContent>
     </Dialog>
+
+    <SandboxTestPaymentSheet onOpenChange={setSandboxSheetOpen} open={sandboxSheetOpen} />
+    </>
   );
 }

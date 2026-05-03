@@ -12,6 +12,10 @@ import {
 } from '@/lib/api/Api';
 import { getApiErrorMessage } from '@/lib/api/errorMessage';
 import { STRIPE_PUBLISHABLE_KEY } from '@/lib/api/env';
+import {
+  abortPendingCheckoutTab,
+  navigateStripeCheckoutInOpenedTab,
+} from '@/lib/stripe/checkoutTab';
 import { getStripeClient } from '@/lib/stripe/client';
 import {
   cancelCompleted,
@@ -124,12 +128,13 @@ function* handleCheckoutRequested(
 
     if (typeof url === 'string' && url.length > 0) {
       yield put(checkoutCompleted());
-      window.location.assign(url);
+      navigateStripeCheckoutInOpenedTab(url);
       return;
     }
 
     throw new Error('Checkout session URL was not returned');
   } catch (error: unknown) {
+    abortPendingCheckoutTab();
     const message = getApiErrorMessage(error, 'Unable to start checkout');
     toast.error(message);
     yield put(checkoutFailed(message));
