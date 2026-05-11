@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, CirclePlus, Kanban, Layers } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -12,11 +12,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   CREATE_UPLOAD_SIGNATURE,
   DELETE_FILE_ASSET,
+  GET_WORKSPACE_TASK_DETAILS,
   REGISTER_FILE_ASSET,
   type TaskStatus,
   type WorkspaceTask,
 } from '@/lib/api/Api';
 import { getApiErrorMessage } from '@/lib/api/errorMessage';
+import { useWorkspaceBoardRealtime } from '@/lib/realtime/useWorkspaceBoardRealtime';
 import { tenantUserPrimaryLabel } from '@/lib/tenant/tenantIdentityDisplay';
 import { uploadToCloudinaryWithPresignedData } from '@/lib/upload/presignedCloudinaryUpload';
 import {
@@ -53,10 +55,12 @@ const TASK_FILTER_SEARCH_DEBOUNCE_MS = 400;
 export function WorkspaceBoardPage() {
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const dispatch = useAppDispatch();
 
   const tenantRole = useAppSelector((s) => s.tenantAuth.tenantRole);
   const workspaces = useAppSelector((s) => s.workspace.workspaces);
+
   const {
     tasks,
     statusCounts,
@@ -135,6 +139,49 @@ export function WorkspaceBoardPage() {
     if (!workspaceId) return;
     dispatch(workspaceTaskBoardSyncFlowRequested({ workspaceId }));
   }, [dispatch, workspaceId]);
+
+  useWorkspaceBoardRealtime({ workspaceId });
+
+  useEffect(() => {
+    if (!workspaceId) return;
+    const taskId = searchParams.get('taskId');
+    if (!taskId || taskId.trim().length === 0) return;
+    dispatch(workspaceTaskDetailsOpenFlowRequested({ workspaceId, taskId }));
+    // Clean up the URL so refresh doesn't keep re-opening forever.
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('taskId');
+      return next;
+    }, { replace: true });
+  }, [dispatch, searchParams, setSearchParams, workspaceId]);
+
+  useEffect(() => {
+    if (!workspaceId) return;
+    const editTaskId = searchParams.get('editTaskId');
+    if (!editTaskId || editTaskId.trim().length === 0) return;
+
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const res = await GET_WORKSPACE_TASK_DETAILS(workspaceId, editTaskId);
+        if (cancelled) return;
+        setEditTask(res.data.data);
+      } catch (e: unknown) {
+        toast.error(getApiErrorMessage(e, 'Unable to load task for editing'));
+      } finally {
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('editTaskId');
+          return next;
+        }, { replace: true });
+      }
+    };
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, setSearchParams, workspaceId]);
 
   useEffect(() => {
     if (tenantRole !== 'admin') return;

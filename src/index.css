@@ -360,3 +360,29 @@ code {
     opacity: 0.94;
   }
 }
+
+/* Native / ad-hoc controls not wrapped in shared UI primitives */
+@layer base {
+  button:not(:disabled):not([aria-disabled='true']),
+  [role='button']:not([aria-disabled='true']):not(:disabled) {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  button[aria-disabled='true'],
+  [role='button'][aria-disabled='true']:not([aria-disabled='false']) {
+    cursor: not-allowed;
+  }
+
+  input:is([type='button'], [type='submit'], [type='reset']):not(:disabled) {
+    cursor: pointer;
+  }
+
+  input:is([type='button'], [type='submit'], [type='reset']):disabled {
+    cursor: not-allowed;
+  }
+
+  summary {
+    cursor: pointer;
+  }
+}

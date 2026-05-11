@@ -37,6 +37,7 @@ import {
   TenantNotificationBell,
   TenantSidebar,
 } from '@/pages/tenant/components';
+import { useNotificationsSocketConnection } from '@/lib/realtime/useNotificationsSocketConnection';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 
 type TenantSubscriptionConfirmIntent = 'cancelSubscription' | 'requestRefund';
@@ -55,6 +56,7 @@ export function TenantLayout() {
   const [isTenantOrgEditOpen, setIsTenantOrgEditOpen] = useState(false);
   const [isManageSubscriptionOpen, setIsManageSubscriptionOpen] = useState(false);
   const {
+    isAuthenticated,
     displayName,
     email,
     organizationName,
@@ -80,6 +82,8 @@ export function TenantLayout() {
     dispatch(tenantSessionSyncRequested());
     dispatch(tenantProfileSyncRequested());
   }, [dispatch]);
+
+  useNotificationsSocketConnection({ enabled: isAuthenticated });
 
   useEffect(() => {
     if (isTenantDetailsOpen || isTenantOrgEditOpen) {

@@ -11,6 +11,7 @@ import type {
   RefreshSubscriberCallback,
   RefreshTokenResponse,
 } from '@/lib/api/types';
+import { AUTH_TOKENS_CHANGED_EVENT } from '@/lib/auth/tokenStorage';
 
 const ACCESS_KEY = 'accessToken';
 const REFRESH_KEY = 'refreshToken';
@@ -83,25 +84,22 @@ function isAuthCredentialsEndpoint(baseUrlUrl: string): boolean {
   );
 }
 
-function sentWithBearer(config: ExtendedAxiosRequestConfig): boolean {
-  const h = config.headers;
-  if (!h) return false;
-  if (typeof h.get === 'function') {
-    const v = h.get('Authorization');
-    return typeof v === 'string' && /^Bearer\s+/i.test(v);
-  }
-  const raw = (h as Record<string, unknown>).Authorization;
-  return typeof raw === 'string' && /^Bearer\s+/i.test(raw);
-}
-
 export const setupInterceptors = (client: AxiosInstance): void => {
   client.interceptors.request.use(
     (config): InternalAxiosRequestConfig => {
       if (isRefreshEndpoint(config)) return config;
 
       const access = localStorage.getItem(ACCESS_KEY);
-      if (access?.length && typeof config.headers?.set === 'function') {
-        config.headers.set('Authorization', `Bearer ${access}`);
+      if (access?.length) {
+        if (typeof config.headers?.set === 'function') {
+          config.headers.set('Authorization', `Bearer ${access}`);
+        } else if (config.headers) {
+          (config.headers as unknown as Record<string, string>).Authorization =
+            `Bearer ${access}`;
+        } else {
+          config.headers = { Authorization: `Bearer ${access}` } as unknown as
+            InternalAxiosRequestConfig['headers'];
+        }
       }
       return config;
     },
@@ -136,19 +134,6 @@ export const setupInterceptors = (client: AxiosInstance): void => {
         return Promise.reject(error);
       }
 
-      /** Only replay when the original outbound call carried an access JWT */
-      const hadBearerHint = sentWithBearer(original) || /^Bearer\s+/i.test(
-        String(
-          typeof original.headers?.get === 'function'
-            ? original.headers.get('Authorization')
-            : (original.headers as Record<string, unknown>)?.Authorization ?? '',
-        ),
-      );
-
-      if (!hadBearerHint) {
-        return Promise.reject(error);
-      }
-
       /* Match example style: recognizable anonymous / expired errors */
       const tokenStaleHint =
         !msgLc ||
@@ -164,8 +149,13 @@ export const setupInterceptors = (client: AxiosInstance): void => {
       if (isRefreshing) {
         return new Promise<AxiosResponse>((resolve, reject) => {
           addRefreshSubscriber((nextAccess: string) => {
-            if (original.headers && typeof original.headers.set === 'function') {
-              original.headers.set('Authorization', `Bearer ${nextAccess}`);
+            if (original.headers) {
+              if (typeof original.headers.set === 'function') {
+                original.headers.set('Authorization', `Bearer ${nextAccess}`);
+              } else {
+                (original.headers as unknown as Record<string, string>).Authorization =
+                  `Bearer ${nextAccess}`;
+              }
             }
             void client(original).then(resolve).catch(reject);
           });
@@ -196,16 +186,22 @@ export const setupInterceptors = (client: AxiosInstance): void => {
         if (session.refreshToken?.length) {
           localStorage.setItem(REFRESH_KEY, session.refreshToken);
         }
+        window.dispatchEvent(new Event(AUTH_TOKENS_CHANGED_EVENT));
 
         (
           client.defaults.headers.common as { Authorization?: string }
         ).Authorization = `Bearer ${session.accessToken}`;
 
-        if (original.headers?.set) {
-          original.headers.set(
-            'Authorization',
-            `Bearer ${session.accessToken}`,
-          );
+        if (original.headers) {
+          if (typeof original.headers.set === 'function') {
+            original.headers.set(
+              'Authorization',
+              `Bearer ${session.accessToken}`,
+            );
+          } else {
+            (original.headers as unknown as Record<string, string>).Authorization =
+              `Bearer ${session.accessToken}`;
+          }
         }
 
         onRefreshed(session.accessToken);

@@ -276,6 +276,14 @@ export interface InAppNotificationMarkReadData {
 export type InAppNotificationMarkReadResponse =
   ApiSuccessResponse<InAppNotificationMarkReadData>;
 
+export interface InAppNotificationMarkAllReadData {
+  matched: number;
+  modified: number;
+}
+
+export type InAppNotificationMarkAllReadResponse =
+  ApiSuccessResponse<InAppNotificationMarkAllReadData>;
+
 export interface Workspace {
   id: string;
   tenantId: string;

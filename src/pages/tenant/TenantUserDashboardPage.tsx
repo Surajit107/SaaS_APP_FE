@@ -26,12 +26,16 @@ import {
   userTaskUpdateFlowRequested,
 } from '@/features/workspace/saga/userTaskBoardSaga';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { useMemberMyTasksRealtime } from '@/lib/realtime/useMemberMyTasksRealtime';
 
 const TASK_FILTER_SEARCH_DEBOUNCE_MS = 400;
 
 export function TenantUserDashboardPage() {
   const dispatch = useAppDispatch();
   const tenantRole = useAppSelector((s) => s.tenantAuth.tenantRole);
+  const isMemberRole = tenantRole === 'member';
+
+  useMemberMyTasksRealtime({ enabled: isMemberRole });
   const {
     tasks,
     statusCounts,
@@ -132,7 +136,7 @@ export function TenantUserDashboardPage() {
     dispatch(userTaskDetailsRefreshFlowRequested());
   };
 
-  if (tenantRole !== 'member') {
+  if (!isMemberRole) {
     return <Navigate replace to="/tenant/workspaces" />;
   }
 

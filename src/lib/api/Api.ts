@@ -24,6 +24,7 @@ import type {
   InviteTenantUserResponse,
   InAppNotificationListResponse,
   InAppNotificationMarkReadResponse,
+  InAppNotificationMarkAllReadResponse,
   ListTenantUsersQuery,
   ListWorkspaceTasksQuery,
   LoginPayload,
@@ -195,6 +196,12 @@ export const MARK_IN_APP_NOTIFICATION_READ = (
   API.patch<InAppNotificationMarkReadResponse>(
     `/notifications/in-app/${encodeURIComponent(notificationId)}/read`,
   );
+
+export const MARK_ALL_IN_APP_NOTIFICATIONS_READ =
+  (): Promise<AxiosResponse<InAppNotificationMarkAllReadResponse>> =>
+    API.patch<InAppNotificationMarkAllReadResponse>(
+      '/notifications/in-app/read-all',
+    );
 
 export const GET_BILLING_PLANS = (): Promise<AxiosResponse<BillingPlansResponse>> =>
   API.get<BillingPlansResponse>('/billing/plans');
