@@ -43,7 +43,7 @@ export function SandboxTestPaymentSheet({ open, onOpenChange }: SandboxTestPayme
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="flex w-full flex-col gap-0 overflow-y-auto sm:max-w-md" side="right">
+      <SheetContent className="flex min-h-0 flex-1 flex-col gap-0 overflow-y-auto" side="right">
         <SheetHeader className="text-left">
           <SheetTitle className="flex items-center gap-2 pr-8">
             <CreditCard className="text-primary size-5 shrink-0" aria-hidden />

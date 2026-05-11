@@ -103,7 +103,7 @@ export function TenantUserDetailSheet() {
   return (
     <>
       <Sheet onOpenChange={handleSheetOpenChange} open={detailOpen}>
-        <SheetContent className="flex w-full flex-col gap-0 overflow-y-auto sm:max-w-md">
+        <SheetContent className="flex min-h-0 flex-1 flex-col gap-0 overflow-y-auto">
           <SheetHeader className="border-border/60 border-b pb-4">
             <SheetTitle>User details</SheetTitle>
             <SheetDescription>
