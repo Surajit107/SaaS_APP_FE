@@ -2,6 +2,7 @@ import { fork, all } from 'redux-saga/effects';
 
 import { tenantSubscriptionSaga } from '@/features/subscription/saga/tenantSubscriptionSaga';
 import { tenantAuthSaga } from '@/features/tenant/saga/tenantAuthSaga';
+import { tenantFloatingChatSaga } from '@/features/tenant/saga/tenantFloatingChatSaga';
 import { tenantUserAdminSaga } from '@/features/tenant/saga/tenantUserAdminSaga';
 import { tenantUserListSaga } from '@/features/tenant/saga/tenantUserListSaga';
 import { userTaskBoardSaga } from '@/features/workspace/saga/userTaskBoardSaga';
@@ -13,6 +14,7 @@ export function* rootSaga(): Generator {
     fork(tenantAuthSaga),
     fork(tenantUserListSaga),
     fork(tenantUserAdminSaga),
+    fork(tenantFloatingChatSaga),
     fork(tenantSubscriptionSaga),
     fork(workspaceSaga),
     fork(workspaceTaskBoardSaga),

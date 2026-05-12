@@ -142,3 +142,15 @@ export interface RegisterFileAssetPayload {
 export interface CreateWorkspacePayload {
   name: string;
 }
+
+export interface CreateChatSessionPayload {
+  title?: string;
+}
+
+export interface SendChatMessagePayload {
+  content: string;
+}
+
+export interface PatchChatSessionPayload {
+  title?: string;
+}

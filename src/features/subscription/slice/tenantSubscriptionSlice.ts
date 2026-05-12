@@ -3,6 +3,13 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { logout } from '@/features/tenant/slice/tenantAuthSlice';
 import type { BillingPlan, TenantSubscriptionSnapshot } from '@/lib/api/Api';
 
+export interface TenantSubscriptionCurrentPlanDetail {
+  planId: string | null;
+  plan: BillingPlan | null;
+  isLoading: boolean;
+  error: string | null;
+}
+
 export interface TenantSubscriptionState {
   plans: BillingPlan[];
   subscription: TenantSubscriptionSnapshot | null;
@@ -11,6 +18,8 @@ export interface TenantSubscriptionState {
   checkoutPlanId: string | null;
   isCancelling: boolean;
   isRefunding: boolean;
+  /** Fresh catalog row when Manage subscription is open (GET /billing/plans/:planId). */
+  currentPlanDetail: TenantSubscriptionCurrentPlanDetail;
   checkoutSync: {
     isLoading: boolean;
     isSynced: boolean;
@@ -22,6 +31,13 @@ export interface TenantSubscriptionState {
   error: string | null;
 }
 
+const currentPlanDetailInitial: TenantSubscriptionCurrentPlanDetail = {
+  planId: null,
+  plan: null,
+  isLoading: false,
+  error: null,
+};
+
 const initialState: TenantSubscriptionState = {
   plans: [],
   subscription: null,
@@ -30,6 +46,7 @@ const initialState: TenantSubscriptionState = {
   checkoutPlanId: null,
   isCancelling: false,
   isRefunding: false,
+  currentPlanDetail: currentPlanDetailInitial,
   checkoutSync: {
     isLoading: false,
     isSynced: false,
@@ -160,6 +177,32 @@ export const tenantSubscriptionSlice = createSlice({
     clearError: (state): void => {
       state.error = null;
     },
+    currentPlanDetailLoadStarted: (
+      state,
+      action: PayloadAction<{ planId: string }>,
+    ): void => {
+      state.currentPlanDetail.planId = action.payload.planId;
+      state.currentPlanDetail.isLoading = true;
+      state.currentPlanDetail.error = null;
+      state.currentPlanDetail.plan = null;
+    },
+    currentPlanDetailLoadSucceeded: (
+      state,
+      action: PayloadAction<BillingPlan>,
+    ): void => {
+      state.currentPlanDetail.plan = action.payload;
+      state.currentPlanDetail.planId = action.payload.id;
+      state.currentPlanDetail.isLoading = false;
+      state.currentPlanDetail.error = null;
+    },
+    currentPlanDetailLoadFailed: (state, action: PayloadAction<string>): void => {
+      state.currentPlanDetail.isLoading = false;
+      state.currentPlanDetail.error = action.payload;
+      state.currentPlanDetail.plan = null;
+    },
+    currentPlanDetailCleared: (state): void => {
+      state.currentPlanDetail = currentPlanDetailInitial;
+    },
   },
   extraReducers: (builder) => {
     builder.addCase(logout, () => initialState);
@@ -187,4 +230,8 @@ export const {
   refundCompleted,
   refundFailed,
   clearError,
+  currentPlanDetailLoadStarted,
+  currentPlanDetailLoadSucceeded,
+  currentPlanDetailLoadFailed,
+  currentPlanDetailCleared,
 } = tenantSubscriptionSlice.actions;

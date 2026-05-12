@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 
 import {
@@ -16,10 +16,11 @@ import {
   tenantProfileSyncRequested,
   tenantSessionSyncRequested,
 } from '@/features/tenant/saga/tenantAuthSaga';
-import { modalDismissed } from '@/features/subscription/slice/tenantSubscriptionSlice';
+import { modalDismissed, currentPlanDetailCleared } from '@/features/subscription/slice/tenantSubscriptionSlice';
 import {
   tenantSubscriptionCancelRequested,
   tenantSubscriptionCheckoutRequested,
+  tenantSubscriptionCurrentPlanDetailRequested,
   tenantSubscriptionModalOpenRequested,
   tenantSubscriptionRefundRequested,
 } from '@/features/subscription/saga/tenantSubscriptionSaga';
@@ -35,6 +36,7 @@ import {
   type TenantDetailsDialogScope,
   TenantOrganizationEditDialog,
   TenantNotificationBell,
+  TenantFloatingChat,
   TenantSidebar,
 } from '@/pages/tenant/components';
 import { useNotificationsSocketConnection } from '@/lib/realtime/useNotificationsSocketConnection';
@@ -76,7 +78,47 @@ export function TenantLayout() {
     subscription,
     isCancelling,
     isRefunding,
+    currentPlanDetail,
   } = useAppSelector((s) => s.tenantSubscription);
+
+  useEffect(() => {
+    if (!isManageSubscriptionOpen) {
+      dispatch(currentPlanDetailCleared());
+      return;
+    }
+    const id = subscription?.plan?.id?.trim();
+    if (id && id.length > 0) {
+      dispatch(tenantSubscriptionCurrentPlanDetailRequested({ planId: id }));
+    } else {
+      dispatch(currentPlanDetailCleared());
+    }
+  }, [dispatch, isManageSubscriptionOpen, subscription?.plan?.id]);
+
+  const manageSubscriptionCatalog = useMemo(() => {
+    const pid = subscription?.plan?.id ?? null;
+    const detailPlan = currentPlanDetail.plan;
+    const fresh =
+      pid !== null &&
+      detailPlan !== null &&
+      detailPlan.id === pid &&
+      !currentPlanDetail.isLoading &&
+      currentPlanDetail.error === null;
+    return {
+      planFeatures:
+        fresh && detailPlan
+          ? detailPlan.featureHighlights
+          : subscription?.plan?.featureHighlights ?? [],
+      catalogName: fresh && detailPlan ? detailPlan.name : null,
+      isPlanDetailLoading: Boolean(pid && currentPlanDetail.isLoading),
+      planDetailError: currentPlanDetail.error,
+    };
+  }, [
+    subscription?.plan?.id,
+    subscription?.plan?.featureHighlights,
+    currentPlanDetail.plan,
+    currentPlanDetail.isLoading,
+    currentPlanDetail.error,
+  ]);
 
   useEffect(() => {
     dispatch(tenantSessionSyncRequested());
@@ -205,22 +247,27 @@ export function TenantLayout() {
         tenantUpdateError={tenantUpdateError}
       />
       <ManageSubscriptionDialog
+        catalogPlanName={manageSubscriptionCatalog.catalogName}
         isCancelling={isCancelling}
+        isPlanDetailLoading={manageSubscriptionCatalog.isPlanDetailLoading}
         isRefunding={isRefunding}
         onCancel={handleCancelSubscription}
-        onOpenChange={setIsManageSubscriptionOpen}
+        onOpenChange={(open) => {
+          setIsManageSubscriptionOpen(open);
+        }}
         onRefund={handleRequestRefund}
         onUpgrade={() => {
           setIsManageSubscriptionOpen(false);
           handleOpenSubscriptionModal();
         }}
         open={isManageSubscriptionOpen}
+        planDetailError={manageSubscriptionCatalog.planDetailError}
+        planFeatures={manageSubscriptionCatalog.planFeatures}
         planKey={subscription?.planKey ?? checkoutSync.planKey}
         nextBillingDate={
           subscription?.nextBillingDate ?? subscription?.currentPeriodEnd ?? null
         }
         nextBillingInDays={subscription?.nextBillingInDays ?? null}
-        planFeatures={subscription?.plan?.featureHighlights ?? []}
         subscriptionStatus={subscription?.status ?? checkoutSync.subscriptionStatus}
       />
       <SubscriptionPlansDialog
@@ -271,6 +318,7 @@ export function TenantLayout() {
           </main>
         </SidebarInset>
       </SidebarProvider>
+      <TenantFloatingChat />
     </>
   );
 }

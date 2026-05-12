@@ -22,10 +22,14 @@ interface ManageSubscriptionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   planKey: string | null;
+  /** When set (from GET /billing/plans/:id), shown as the plan chip label instead of formatting planKey. */
+  catalogPlanName?: string | null;
   subscriptionStatus: string | null;
   nextBillingDate: string | null;
   nextBillingInDays: number | null;
   planFeatures: string[];
+  isPlanDetailLoading?: boolean;
+  planDetailError?: string | null;
   isCancelling: boolean;
   isRefunding: boolean;
   onUpgrade: () => void;
@@ -37,10 +41,13 @@ export function ManageSubscriptionDialog({
   open,
   onOpenChange,
   planKey,
+  catalogPlanName = null,
   subscriptionStatus,
   nextBillingDate,
   nextBillingInDays,
   planFeatures,
+  isPlanDetailLoading = false,
+  planDetailError = null,
   isCancelling,
   isRefunding,
   onUpgrade,
@@ -122,7 +129,9 @@ export function ManageSubscriptionDialog({
     };
   };
 
-  const planLabel = hasActiveSubscription ? formatPlanLabel(planKey) : 'No active plan';
+  const planLabel = hasActiveSubscription
+    ? catalogPlanName?.trim() || formatPlanLabel(planKey)
+    : 'No active plan';
   const statusLabel = formatStatusLabel(normalizedStatus);
   const planChipClasses = resolvePlanChipClasses(normalizedPlan);
   const statusPresentation = resolveStatusPresentation(normalizedStatus);
@@ -190,17 +199,25 @@ export function ManageSubscriptionDialog({
             </dl>
             <div className="mt-3">
               <p className="text-muted-foreground text-xs uppercase tracking-wide">Plan features</p>
+              {isPlanDetailLoading ? (
+                <p className="text-muted-foreground mt-2 text-sm">Loading latest plan details…</p>
+              ) : null}
+              {planDetailError ? (
+                <p className="text-destructive mt-2 text-sm" role="alert">
+                  {planDetailError}
+                </p>
+              ) : null}
               {planFeatures.length > 0 ? (
                 <ul className="text-foreground mt-2 list-inside list-disc space-y-1 text-sm">
                   {planFeatures.map((feature) => (
                     <li key={feature}>{feature}</li>
                   ))}
                 </ul>
-              ) : (
+              ) : !isPlanDetailLoading ? (
                 <p className="text-muted-foreground mt-2 text-sm">
                   No feature limits are configured for this plan.
                 </p>
-              )}
+              ) : null}
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-3">
               <Button onClick={onUpgrade} size="sm" type="button" variant="outline">

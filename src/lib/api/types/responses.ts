@@ -73,8 +73,14 @@ export interface BillingPlan {
     maxUsers?: number;
     maxFileAssets?: number;
     maxStorageMb?: number;
+    aiChatbot?: boolean;
   } | null;
+  entitlements: {
+    aiChatbot: boolean;
+  };
   featureHighlights: string[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface TenantProfile {
@@ -101,12 +107,17 @@ export interface TenantSubscriptionSnapshot {
   plan: {
     id: string;
     name: string;
+    stripePriceId: string;
     amount: number;
     currency: string;
     interval: string;
     trialDays: number;
     isTrialEnabled: boolean;
+    features: BillingPlan['features'];
+    entitlements: BillingPlan['entitlements'];
     featureHighlights: string[];
+    createdAt: string;
+    updatedAt: string;
   } | null;
 }
 
@@ -175,6 +186,7 @@ export type UpdateTenantUserResponse = ApiSuccessResponse<TenantUserProfile>;
 export type DeleteTenantUserResponse = ApiSuccessResponse<null>;
 
 export type BillingPlansResponse = ApiSuccessResponse<BillingPlan[]>;
+export type BillingPlanResponse = ApiSuccessResponse<BillingPlan>;
 export type TenantProfileResponse = ApiSuccessResponse<TenantProfile>;
 export type TenantSubscriptionResponse = ApiSuccessResponse<TenantSubscriptionSnapshot>;
 export type CheckoutSessionResponse = ApiSuccessResponse<CheckoutSessionData>;
@@ -300,3 +312,41 @@ export interface WorkspaceDeleteData {
 export type WorkspaceListResponse = ApiSuccessResponse<Workspace[]>;
 export type WorkspaceResponse = ApiSuccessResponse<Workspace>;
 export type WorkspaceDeleteResponse = ApiSuccessResponse<WorkspaceDeleteData>;
+
+export type ChatEligibilityResponse = ApiSuccessResponse<{
+  allowed: boolean;
+  reason?: string;
+}>;
+
+export interface ChatSession {
+  id: string;
+  tenantId: string;
+  userId: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  sessionId: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  provider?: string;
+  model?: string;
+  createdAt: string;
+}
+
+export type ChatModuleStatusResponse = ApiSuccessResponse<{
+  module: string;
+  dbReady: boolean;
+}>;
+
+export type ChatSessionListResponse = ApiSuccessResponse<ChatSession[]>;
+export type ChatSessionCreateResponse = ApiSuccessResponse<ChatSession>;
+export type ChatSessionPatchResponse = ApiSuccessResponse<ChatSession>;
+export type ChatSessionDeleteResponse = ApiSuccessResponse<null>;
+export type ChatMessagesListResponse = ApiSuccessResponse<ChatMessage[]>;
+export type ChatSendMessageResponse = ApiSuccessResponse<{
+  assistantMessage: ChatMessage;
+}>;

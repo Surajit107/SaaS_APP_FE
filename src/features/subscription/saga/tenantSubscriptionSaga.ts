@@ -6,17 +6,13 @@ import {
   CANCEL_TENANT_SUBSCRIPTION,
   CONFIRM_CHECKOUT_SUCCESS,
   CREATE_CHECKOUT_SESSION,
+  GET_BILLING_PLAN_BY_ID,
   GET_BILLING_PLANS,
   GET_TENANT_SUBSCRIPTION,
   REQUEST_TENANT_SUBSCRIPTION_REFUND,
 } from '@/lib/api/Api';
 import { getApiErrorMessage } from '@/lib/api/errorMessage';
 import { STRIPE_PUBLISHABLE_KEY } from '@/lib/api/env';
-import {
-  abortPendingCheckoutTab,
-  navigateStripeCheckoutInOpenedTab,
-} from '@/lib/stripe/checkoutTab';
-import { getStripeClient } from '@/lib/stripe/client';
 import {
   cancelCompleted,
   cancelFailed,
@@ -27,6 +23,10 @@ import {
   checkoutSyncFailed,
   checkoutSyncRequested,
   checkoutSyncSucceeded,
+  currentPlanDetailCleared,
+  currentPlanDetailLoadFailed,
+  currentPlanDetailLoadStarted,
+  currentPlanDetailLoadSucceeded,
   promptCheckFailed,
   promptCheckRequested,
   promptCheckSucceeded,
@@ -36,6 +36,11 @@ import {
   subscriptionModalOpened,
   subscriptionSnapshotUpdated,
 } from '@/features/subscription/slice/tenantSubscriptionSlice';
+import {
+  abortPendingCheckoutTab,
+  navigateStripeCheckoutInOpenedTab,
+} from '@/lib/stripe/checkoutTab';
+import { getStripeClient } from '@/lib/stripe/client';
 
 const ACTIVE_SUBSCRIPTION_STATUSES = new Set(['active', 'trialing']);
 
@@ -62,6 +67,10 @@ export const tenantSubscriptionCancelRequested = createAction<{
 export const tenantSubscriptionRefundRequested = createAction<{
   note?: string;
 }>('tenantSubscription/refundFlowRequested');
+
+export const tenantSubscriptionCurrentPlanDetailRequested = createAction<{
+  planId: string;
+}>('tenantSubscription/currentPlanDetailFlowRequested');
 
 type CancelSubscriptionFlowAction = {
   payload: {
@@ -217,6 +226,28 @@ function* handleRefundRequested(
   }
 }
 
+function* handleCurrentPlanDetailRequested(
+  action: ReturnType<typeof tenantSubscriptionCurrentPlanDetailRequested>,
+): Generator {
+  const planId = action.payload.planId.trim();
+  if (planId.length === 0) {
+    yield put(currentPlanDetailCleared());
+    return;
+  }
+  try {
+    yield put(currentPlanDetailLoadStarted({ planId }));
+    const response = (yield call(
+      GET_BILLING_PLAN_BY_ID,
+      planId,
+    )) as Awaited<ReturnType<typeof GET_BILLING_PLAN_BY_ID>>;
+    yield put(currentPlanDetailLoadSucceeded(response.data.data));
+  } catch (error: unknown) {
+    const message = getApiErrorMessage(error, 'Unable to load plan details');
+    toast.error(message);
+    yield put(currentPlanDetailLoadFailed(message));
+  }
+}
+
 export function* tenantSubscriptionSaga(): Generator {
   yield all([
     takeLatest(
@@ -237,5 +268,9 @@ export function* tenantSubscriptionSaga(): Generator {
     ),
     takeLatest(tenantSubscriptionCancelRequested, handleCancelRequested),
     takeLatest(tenantSubscriptionRefundRequested, handleRefundRequested),
+    takeLatest(
+      tenantSubscriptionCurrentPlanDetailRequested.type,
+      handleCurrentPlanDetailRequested,
+    ),
   ]);
 }

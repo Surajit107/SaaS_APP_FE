@@ -6,3 +6,4 @@ export { TenantOrganizationEditDialog } from '@/pages/tenant/components/TenantOr
 export { TenantHeader } from '@/pages/tenant/components/TenantHeader';
 export { TenantNotificationBell } from '@/pages/tenant/components/TenantNotificationBell';
 export { TenantSidebar } from '@/pages/tenant/components/TenantSidebar';
+export { TenantFloatingChat } from '@/pages/tenant/components/TenantFloatingChat';

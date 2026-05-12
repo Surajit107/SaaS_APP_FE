@@ -5,9 +5,20 @@ import { setupInterceptors } from '@/lib/api/interceptor';
 import type {
   AcceptInvitePayload,
   AcceptInviteResponse,
+  BillingPlanResponse,
   BillingPlansResponse,
   CancelSubscriptionPayload,
   CancelSubscriptionResponse,
+  ChatEligibilityResponse,
+  ChatMessagesListResponse,
+  ChatSendMessageResponse,
+  ChatSessionCreateResponse,
+  ChatSessionDeleteResponse,
+  ChatSessionListResponse,
+  ChatSessionPatchResponse,
+  CreateChatSessionPayload,
+  PatchChatSessionPayload,
+  SendChatMessagePayload,
   CreateUploadSignaturePayload,
   CreateUploadSignatureResponse,
   CreateWorkspacePayload,
@@ -68,6 +79,7 @@ export type {
   AuthSessionData,
   AuthSessionUser,
   BillingPlan,
+  BillingPlanResponse,
   BillingPlansResponse,
   CheckoutSuccessSyncData,
   CheckoutSuccessSyncResponse,
@@ -77,6 +89,18 @@ export type {
   CreateCheckoutSessionPayload,
   CancelSubscriptionPayload,
   CancelSubscriptionResponse,
+  ChatEligibilityResponse,
+  ChatMessage,
+  ChatMessagesListResponse,
+  ChatSendMessageResponse,
+  ChatSession,
+  ChatSessionCreateResponse,
+  ChatSessionDeleteResponse,
+  ChatSessionListResponse,
+  ChatSessionPatchResponse,
+  CreateChatSessionPayload,
+  PatchChatSessionPayload,
+  SendChatMessagePayload,
   AuthLoginScope,
   LoginPayload,
   LogoutPayload,
@@ -205,6 +229,11 @@ export const MARK_ALL_IN_APP_NOTIFICATIONS_READ =
 
 export const GET_BILLING_PLANS = (): Promise<AxiosResponse<BillingPlansResponse>> =>
   API.get<BillingPlansResponse>('/billing/plans');
+
+export const GET_BILLING_PLAN_BY_ID = (
+  planId: string,
+): Promise<AxiosResponse<BillingPlanResponse>> =>
+  API.get<BillingPlanResponse>(`/billing/plans/${encodeURIComponent(planId)}`);
 
 export const GET_TENANT_SUBSCRIPTION = (): Promise<
   AxiosResponse<TenantSubscriptionResponse>
@@ -358,4 +387,51 @@ export const DELETE_WORKSPACE = (
 ): Promise<AxiosResponse<WorkspaceDeleteResponse>> =>
   API.delete<WorkspaceDeleteResponse>(
     `/workspaces/${encodeURIComponent(workspaceId)}`,
+  );
+
+export const GET_CHAT_ELIGIBILITY = (): Promise<AxiosResponse<ChatEligibilityResponse>> =>
+  API.get<ChatEligibilityResponse>('/chat/eligibility');
+
+export const LIST_CHAT_SESSIONS = (
+  limit = 30,
+): Promise<AxiosResponse<ChatSessionListResponse>> =>
+  API.get<ChatSessionListResponse>('/chat/sessions', { params: { limit } });
+
+export const CREATE_CHAT_SESSION = (
+  data: CreateChatSessionPayload = {},
+): Promise<AxiosResponse<ChatSessionCreateResponse>> =>
+  API.post<ChatSessionCreateResponse>('/chat/sessions', data);
+
+export const PATCH_CHAT_SESSION = (
+  sessionId: string,
+  data: PatchChatSessionPayload,
+): Promise<AxiosResponse<ChatSessionPatchResponse>> =>
+  API.patch<ChatSessionPatchResponse>(
+    `/chat/sessions/${encodeURIComponent(sessionId)}`,
+    data,
+  );
+
+export const DELETE_CHAT_SESSION = (
+  sessionId: string,
+): Promise<AxiosResponse<ChatSessionDeleteResponse>> =>
+  API.delete<ChatSessionDeleteResponse>(
+    `/chat/sessions/${encodeURIComponent(sessionId)}`,
+  );
+
+export const GET_CHAT_MESSAGES = (
+  sessionId: string,
+  limit = 100,
+): Promise<AxiosResponse<ChatMessagesListResponse>> =>
+  API.get<ChatMessagesListResponse>(
+    `/chat/sessions/${encodeURIComponent(sessionId)}/messages`,
+    { params: { limit } },
+  );
+
+export const SEND_CHAT_MESSAGE = (
+  sessionId: string,
+  data: SendChatMessagePayload,
+): Promise<AxiosResponse<ChatSendMessageResponse>> =>
+  API.post<ChatSendMessageResponse>(
+    `/chat/sessions/${encodeURIComponent(sessionId)}/messages`,
+    data,
   );
