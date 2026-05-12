@@ -8,7 +8,7 @@ import {
   Rows3,
   UserRound,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -45,6 +45,7 @@ export function TenantHeader({
   onManageSubscription,
   onLogout,
 }: TenantHeaderProps) {
+  const navigate = useNavigate();
   const primaryLabel = tenantUserPrimaryLabel(displayName, email, 'Tenant account');
   const avatarInitial = tenantUserAvatarInitial(displayName, email);
   const secondaryLine =
@@ -103,6 +104,18 @@ export function TenantHeader({
                   {secondaryLine ?? primaryLabel}
                 </p>
               </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuItem
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    void navigate('/');
+                  }}
+                >
+                  <House aria-hidden />
+                  Go to home
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <DropdownMenuItem

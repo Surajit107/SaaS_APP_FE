@@ -1,6 +1,7 @@
 import {
   Building2,
   CreditCard,
+  House,
   LayoutDashboard,
   Layers,
   Loader2,
@@ -10,7 +11,7 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 
 import {
   DropdownMenu,
@@ -72,6 +73,7 @@ export function TenantSidebar({
   onLogout,
 }: TenantSidebarProps) {
   const { isMobile, setOpenMobile } = useSidebar();
+  const navigate = useNavigate();
   const isMember = tenantRole === 'member';
   const navItems: TenantNavItem[] = isMember
     ? [
@@ -194,6 +196,21 @@ export function TenantSidebar({
                     {secondaryLine ?? primaryLabel}
                   </p>
                 </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      if (isMobile) {
+                        setOpenMobile(false);
+                      }
+                      void navigate('/');
+                    }}
+                  >
+                    <House aria-hidden />
+                    Go to home
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
                   <DropdownMenuItem
