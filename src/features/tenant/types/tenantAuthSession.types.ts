@@ -1,4 +1,4 @@
-import type { AuthSessionUser } from '@/lib/api/types';
+import type { AuthSessionUser, MfaChallengeMethod } from '@/lib/api/types';
 
 /**
  * Payload for `loginSucceeded` — must stay in lockstep with `AuthSessionUser`
@@ -10,3 +10,16 @@ export type TenantLoginSuccessPayload = Pick<
 > & {
   organizationName?: string;
 };
+
+/**
+ * A first factor that passed, waiting on a second. Held in memory only — the
+ * challenge token is a credential and expires in minutes.
+ */
+export interface TenantMfaChallenge {
+  challengeToken: string;
+  methods: MfaChallengeMethod[];
+  /** ISO timestamp; after this the user has to start from the password again. */
+  expiresAt: string;
+  /** Echoed back for display, so the second step can name the account. */
+  email: string;
+}

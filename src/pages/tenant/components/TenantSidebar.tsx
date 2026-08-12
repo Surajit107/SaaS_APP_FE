@@ -7,6 +7,7 @@ import {
   Loader2,
   LogOut,
   Rows3,
+  ShieldCheck,
   UserRound,
   Users,
   type LucideIcon,
@@ -57,6 +58,8 @@ interface TenantSidebarProps {
   isLogoutPending?: boolean;
   /** Open profile / tenant details dialog (`accountOnly` for members). */
   onOpenProfile: (scope: TenantDetailsDialogScope) => void;
+  /** Open the two-factor authentication dialog directly. */
+  onManageSecurity: () => void;
   onManageSubscription: () => void;
   onLogout: () => void;
 }
@@ -69,6 +72,7 @@ export function TenantSidebar({
   tenantRole,
   isLogoutPending = false,
   onOpenProfile,
+  onManageSecurity,
   onManageSubscription,
   onLogout,
 }: TenantSidebarProps) {
@@ -221,6 +225,15 @@ export function TenantSidebar({
                   >
                     <UserRound aria-hidden />
                     {isMember ? 'Profile' : 'Tenant details'}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      onManageSecurity();
+                    }}
+                  >
+                    <ShieldCheck aria-hidden />
+                    Security &amp; 2FA
                   </DropdownMenuItem>
                   {!isMember ? (
                     <DropdownMenuItem

@@ -3,6 +3,7 @@ export { ManageSubscriptionDialog } from '@/pages/tenant/components/ManageSubscr
 export { TenantDetailsDialog } from '@/pages/tenant/components/TenantDetailsDialog';
 export type { TenantDetailsDialogScope } from '@/pages/tenant/components/TenantDetailsDialog';
 export { TenantOrganizationEditDialog } from '@/pages/tenant/components/TenantOrganizationEditDialog';
+export { TenantSecurityDialog } from '@/pages/tenant/components/security/TenantSecurityDialog';
 export { TenantHeader } from '@/pages/tenant/components/TenantHeader';
 export { TenantNotificationBell } from '@/pages/tenant/components/TenantNotificationBell';
 export { TenantSidebar } from '@/pages/tenant/components/TenantSidebar';

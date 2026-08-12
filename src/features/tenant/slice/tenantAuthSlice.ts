@@ -6,7 +6,10 @@ import {
 } from '@/lib/auth/portalSession';
 import type { TenantProfile } from '@/lib/api/Api';
 
-import type { TenantLoginSuccessPayload } from '@/features/tenant/types/tenantAuthSession.types';
+import type {
+  TenantLoginSuccessPayload,
+  TenantMfaChallenge,
+} from '@/features/tenant/types/tenantAuthSession.types';
 
 export interface TenantAuthState {
   isAuthenticated: boolean;
@@ -26,6 +29,13 @@ export interface TenantAuthState {
   error: string | null;
   /** Set after successful register; consumer navigates to login and clears. */
   postRegisterLoginHint: string | null;
+  /** Password accepted, second factor outstanding; null when no login is mid-flight. */
+  mfaChallenge: TenantMfaChallenge | null;
+  isMfaVerifying: boolean;
+  /** Errors from the second step only — kept apart from the password form's `error`. */
+  mfaError: string | null;
+  /** POST /auth/login/email-code in flight. */
+  isLoginCodeRequestPending: boolean;
   tenantProfile: TenantProfile | null;
   isTenantProfileLoading: boolean;
   tenantProfileError: string | null;
@@ -53,6 +63,10 @@ const initialState: TenantAuthState = {
   isLoading: false,
   error: null,
   postRegisterLoginHint: null,
+  mfaChallenge: null,
+  isMfaVerifying: false,
+  mfaError: null,
+  isLoginCodeRequestPending: false,
   tenantProfile: null,
   isTenantProfileLoading: false,
   tenantProfileError: null,
@@ -96,6 +110,47 @@ export const tenantAuthSlice = createSlice({
     loginRequested: (state): void => {
       state.isLoading = true;
       state.error = null;
+      state.mfaChallenge = null;
+      state.isMfaVerifying = false;
+      state.mfaError = null;
+    },
+    /** `/auth/login` accepted the password but wants a second factor. */
+    mfaChallengeIssued: (
+      state,
+      action: PayloadAction<TenantMfaChallenge>,
+    ): void => {
+      state.isLoading = false;
+      state.error = null;
+      state.mfaChallenge = action.payload;
+      state.isMfaVerifying = false;
+      state.mfaError = null;
+      state.isLoginCodeRequestPending = false;
+    },
+    loginCodeRequestStarted: (state): void => {
+      state.isLoginCodeRequestPending = true;
+      state.error = null;
+    },
+    loginCodeRequestFailed: (state, action: PayloadAction<string>): void => {
+      state.isLoginCodeRequestPending = false;
+      state.error = action.payload;
+    },
+    mfaVerifyStarted: (state): void => {
+      state.isMfaVerifying = true;
+      state.mfaError = null;
+    },
+    mfaVerifyFailed: (state, action: PayloadAction<string>): void => {
+      state.isMfaVerifying = false;
+      state.mfaError = action.payload;
+    },
+    /** Abandons the pending challenge and returns the user to the password form. */
+    mfaChallengeAbandoned: (state): void => {
+      state.mfaChallenge = null;
+      state.isMfaVerifying = false;
+      state.mfaError = null;
+      state.isLoginCodeRequestPending = false;
+    },
+    clearMfaError: (state): void => {
+      state.mfaError = null;
     },
     loginSucceeded: (
       state,
@@ -120,6 +175,9 @@ export const tenantAuthSlice = createSlice({
       state.isLoading = false;
       state.error = null;
       state.postRegisterLoginHint = null;
+      state.mfaChallenge = null;
+      state.isMfaVerifying = false;
+      state.mfaError = null;
       if (action.payload.organizationName !== undefined) {
         state.organizationName = action.payload.organizationName;
       }
@@ -233,6 +291,9 @@ export const tenantAuthSlice = createSlice({
       state.isLoading = false;
       state.error = null;
       state.postRegisterLoginHint = null;
+      state.mfaChallenge = null;
+      state.isMfaVerifying = false;
+      state.mfaError = null;
       state.tenantProfile = null;
       state.isTenantProfileLoading = false;
       state.tenantProfileError = null;
@@ -271,6 +332,13 @@ export const {
   loginRequested,
   loginSucceeded,
   loginFailed,
+  mfaChallengeIssued,
+  mfaVerifyStarted,
+  mfaVerifyFailed,
+  mfaChallengeAbandoned,
+  clearMfaError,
+  loginCodeRequestStarted,
+  loginCodeRequestFailed,
   registerRequested,
   registerSucceeded,
   registerFailed,

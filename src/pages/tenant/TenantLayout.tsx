@@ -35,6 +35,7 @@ import {
   TenantDetailsDialog,
   type TenantDetailsDialogScope,
   TenantOrganizationEditDialog,
+  TenantSecurityDialog,
   TenantNotificationBell,
   TenantFloatingChat,
   TenantSidebar,
@@ -56,6 +57,7 @@ export function TenantLayout() {
   const [tenantDetailsScope, setTenantDetailsScope] =
     useState<TenantDetailsDialogScope>('full');
   const [isTenantOrgEditOpen, setIsTenantOrgEditOpen] = useState(false);
+  const [isTenantSecurityOpen, setIsTenantSecurityOpen] = useState(false);
   const [isManageSubscriptionOpen, setIsManageSubscriptionOpen] = useState(false);
   const {
     isAuthenticated,
@@ -225,12 +227,20 @@ export function TenantLayout() {
               }
             : undefined
         }
+        onManageSecurity={() => {
+          setIsTenantSecurityOpen(true);
+        }}
         onOpenChange={setIsTenantDetailsOpen}
         open={isTenantDetailsOpen}
         organizationDisplayName={tenantProfile?.name ?? organizationName ?? null}
         organizationIsActive={tenantProfile?.isActive ?? null}
         scope={tenantDetailsScope}
         tenantId={tenantProfile?.id ?? null}
+      />
+      <TenantSecurityDialog
+        email={email}
+        onOpenChange={setIsTenantSecurityOpen}
+        open={isTenantSecurityOpen}
       />
       <TenantOrganizationEditDialog
         isTenantProfileLoading={isTenantProfileLoading}
@@ -296,6 +306,9 @@ export function TenantLayout() {
           organizationName={tenantProfile?.name ?? organizationName ?? null}
           tenantRole={tenantRole}
           onLogout={() => dispatch(logoutRequested())}
+          onManageSecurity={() => {
+            setIsTenantSecurityOpen(true);
+          }}
           onManageSubscription={handleOpenManageSubscription}
           onOpenProfile={(scope) => {
             setTenantDetailsScope(scope);

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pencil, UserRound } from 'lucide-react';
+import { Pencil, ShieldCheck, UserRound } from 'lucide-react';
 
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -13,6 +14,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { tenantDisplayNameUpdateRequested } from '@/features/tenant/saga/tenantAuthSaga';
 import { clearDisplayNameSaveError } from '@/features/tenant/slice/tenantAuthSlice';
+import { tenantMfaStatusSyncRequested } from '@/features/tenant/slice/tenantSecuritySlice';
 import { DetailCardSection } from '@/pages/tenant/components/DetailCardSection';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 
@@ -31,6 +33,8 @@ interface TenantDetailsDialogProps {
   organizationDisplayName: string | null;
   /** Opens organization edit dialog (PATCH /tenants/me). Omit when scope is accountOnly. */
   onEditOrganization?: () => void;
+  /** Opens the two-factor authentication dialog. */
+  onManageSecurity: () => void;
   organizationIsActive?: boolean | null;
   isTenantProfileLoading: boolean;
 }
@@ -43,6 +47,7 @@ export function TenantDetailsDialog({
   tenantId,
   organizationDisplayName,
   onEditOrganization,
+  onManageSecurity,
   organizationIsActive,
   isTenantProfileLoading,
 }: TenantDetailsDialogProps) {
@@ -50,6 +55,8 @@ export function TenantDetailsDialog({
   const displayName = useAppSelector((s) => s.tenantAuth.displayName);
   const isDisplayNameSaving = useAppSelector((s) => s.tenantAuth.isDisplayNameSaving);
   const displayNameSaveError = useAppSelector((s) => s.tenantAuth.displayNameSaveError);
+  const mfaStatus = useAppSelector((s) => s.tenantSecurity.status);
+  const isMfaStatusLoading = useAppSelector((s) => s.tenantSecurity.isStatusLoading);
 
   const [isEditingDisplayName, setIsEditingDisplayName] = useState(false);
   const [displayNameDraft, setDisplayNameDraft] = useState('');
@@ -61,6 +68,7 @@ export function TenantDetailsDialog({
       setIsEditingDisplayName(false);
       setDisplayNameDraft(displayName ?? '');
       dispatch(clearDisplayNameSaveError());
+      dispatch(tenantMfaStatusSyncRequested());
       displaySaveSubmittedRef.current = false;
     }
     wasOpenRef.current = open;
@@ -200,6 +208,49 @@ export function TenantDetailsDialog({
               <div>
                 <dt className="text-muted-foreground text-xs uppercase tracking-wide">Email</dt>
                 <dd className="text-foreground mt-1 break-all">{email ?? '—'}</dd>
+              </div>
+            </dl>
+          </DetailCardSection>
+
+          <DetailCardSection
+            headerAction={
+              <Button
+                aria-label="Manage two-factor authentication"
+                className="h-7 gap-1 px-2 text-xs"
+                onClick={onManageSecurity}
+                title="Manage two-factor authentication"
+                type="button"
+                variant="outline"
+              >
+                <ShieldCheck aria-hidden className="size-3 shrink-0" />
+                Manage
+              </Button>
+            }
+            title="Security"
+          >
+            <dl className="mt-3 space-y-3 text-sm">
+              <div>
+                <dt className="text-muted-foreground text-xs uppercase tracking-wide">
+                  Two-factor authentication
+                </dt>
+                <dd className="mt-1 flex flex-wrap items-center gap-2">
+                  {mfaStatus === null ? (
+                    <span className="text-muted-foreground">
+                      {isMfaStatusLoading ? 'Checking...' : '—'}
+                    </span>
+                  ) : (
+                    <>
+                      <Badge variant={mfaStatus.isTotpEnabled ? 'default' : 'secondary'}>
+                        {mfaStatus.isTotpEnabled ? 'On' : 'Off'}
+                      </Badge>
+                      <span className="text-muted-foreground text-xs">
+                        {mfaStatus.isTotpEnabled
+                          ? `Authenticator app · ${String(mfaStatus.backupCodesRemaining)} recovery code${mfaStatus.backupCodesRemaining === 1 ? '' : 's'} left`
+                          : 'Protect your account with a 6-digit code'}
+                      </span>
+                    </>
+                  )}
+                </dd>
               </div>
             </dl>
           </DetailCardSection>

@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Eye, EyeClosed } from 'lucide-react';
+import { Eye, EyeClosed, Mail } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
 import { Button } from '@/components/ui/button';
-import { tenantLoginRequested } from '@/features/tenant/saga/tenantAuthSaga';
+import {
+  tenantLoginCodeRequested,
+  tenantLoginRequested,
+} from '@/features/tenant/saga/tenantAuthSaga';
 import { clearError } from '@/features/tenant/slice/tenantAuthSlice';
+import { TenantMfaChallengeSection } from '@/pages/tenant/components/TenantMfaChallengeSection';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { authInputClassName } from '@/lib/validation/authFieldStyles';
 import type { TenantLoginPortalRole } from '@/lib/api/types/payloads';
@@ -28,7 +32,8 @@ export function TenantCredentialsLoginSection({
   initialEmail = '',
 }: TenantCredentialsLoginSectionProps) {
   const dispatch = useAppDispatch();
-  const { isLoading, error } = useAppSelector((s) => s.tenantAuth);
+  const { isLoading, error, mfaChallenge, isLoginCodeRequestPending } =
+    useAppSelector((s) => s.tenantAuth);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
   const {
@@ -74,9 +79,30 @@ export function TenantCredentialsLoginSection({
     );
   };
 
+  const emailValue = watch('email');
+  const canRequestLoginCode = isEmailLike(emailValue);
+
+  const requestLoginCode = (): void => {
+    if (!canRequestLoginCode) {
+      return;
+    }
+    dispatch(
+      tenantLoginCodeRequested({
+        email: emailValue.trim(),
+        tenantRole: loginTenantRole,
+      }),
+    );
+  };
+
 
   const emailFieldId = `${idPrefix}-login-email`;
   const passwordFieldId = `${idPrefix}-login-password`;
+
+  if (mfaChallenge !== null) {
+    return (
+      <TenantMfaChallengeSection challenge={mfaChallenge} idPrefix={idPrefix} />
+    );
+  }
 
   return (
     <form
@@ -151,6 +177,36 @@ export function TenantCredentialsLoginSection({
           {error}
         </p>
       ) : null}
+
+      <div className="flex items-center gap-3 pt-1">
+        <span className="bg-border h-px flex-1" aria-hidden />
+        <span className="text-muted-foreground text-[11px] uppercase tracking-wider">
+          or
+        </span>
+        <span className="bg-border h-px flex-1" aria-hidden />
+      </div>
+      <Button
+        className="w-full gap-2"
+        disabled={
+          !canRequestLoginCode || isLoginCodeRequestPending || isLoading
+        }
+        onClick={requestLoginCode}
+        type="button"
+        variant="outline"
+      >
+        <Mail aria-hidden className="size-4 shrink-0" />
+        {isLoginCodeRequestPending ? 'Sending code...' : 'Email me a sign-in code'}
+      </Button>
+      <p className="text-muted-foreground text-center text-xs">
+        {canRequestLoginCode
+          ? 'We will send a 6-digit code to that address. No password needed.'
+          : 'Enter your email above to sign in with a one-time code instead.'}
+      </p>
     </form>
   );
+}
+
+/** Cheap client-side gate for the code button; the server still validates. */
+function isEmailLike(value: string | undefined): value is string {
+  return typeof value === 'string' && /^\S+@\S+\.\S+$/.test(value.trim());
 }

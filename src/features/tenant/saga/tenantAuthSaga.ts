@@ -1,5 +1,5 @@
 import { createAction } from '@reduxjs/toolkit';
-import { all, call, put, takeLatest } from 'redux-saga/effects';
+import { all, call, put, select, takeLatest } from 'redux-saga/effects';
 import { toast } from 'sonner';
 
 import {
@@ -11,7 +11,10 @@ import {
   PATCH_TENANT_ME,
   PATCH_TENANT_USER_ME,
   REGISTER,
+  REQUEST_LOGIN_CODE,
+  VERIFY_MFA,
   type AcceptInvitePayload,
+  type AuthSessionData,
   type LoginPayload,
   type RegisterPayload,
   type TenantLoginPortalRole,
@@ -25,11 +28,16 @@ import {
   displayNameSaveFailed,
   displayNameSaveRequested,
   displayNameSaveSucceeded,
+  loginCodeRequestFailed,
+  loginCodeRequestStarted,
   loginFailed,
   loginSucceeded,
   logout,
   logoutFailed,
   logoutRequested,
+  mfaChallengeIssued,
+  mfaVerifyFailed,
+  mfaVerifyStarted,
   registerFailed,
   registerSucceeded,
   tenantProfileFailed,
@@ -41,10 +49,12 @@ import {
 } from '@/features/tenant/slice/tenantAuthSlice';
 import { tenantSubscriptionPromptRequested } from '@/features/subscription/saga/tenantSubscriptionSaga';
 import { clearAuthStorage, getRefreshToken, storeAuthTokens } from '@/lib/auth/tokenStorage';
+import { isMfaRequiredResult } from '@/lib/auth/mfa';
 import {
   clearPostLogoutTenantLoginPath,
   setPostLogoutTenantLoginPath,
 } from '@/lib/tenant/postLogoutTenantLogin';
+import type { RootState } from '@/store/store';
 
 export const tenantLoginRequested = createAction<{
   email: string;
@@ -58,6 +68,17 @@ export const tenantRegisterRequested = createAction<{
   email: string;
   password: string;
 }>('tenantAuth/registerRequested');
+
+/** Second step of a login that answered with a challenge (authenticator or recovery code). */
+export const tenantMfaVerifyRequested = createAction<{ code: string }>(
+  'tenantAuth/mfaVerifyFlowRequested',
+);
+
+/** Passwordless entry: email a one-time code instead of asking for a password. */
+export const tenantLoginCodeRequested = createAction<{
+  email: string;
+  tenantRole: TenantLoginPortalRole;
+}>('tenantAuth/loginCodeFlowRequested');
 
 export const tenantSessionSyncRequested = createAction('tenantAuth/sessionSyncRequested');
 export const tenantProfileSyncRequested = createAction('tenantAuth/tenantProfileSyncRequested');
@@ -73,6 +94,26 @@ export const tenantAcceptInviteRequested = createAction<AcceptInvitePayload>(
   'tenantAuth/acceptInviteRequested',
 );
 
+/** Shared tail of both login paths: persist tokens and light up the session. */
+function* establishTenantSession(
+  session: AuthSessionData,
+  successMessage: string,
+): Generator {
+  storeAuthTokens(session.accessToken, session.refreshToken);
+  clearPostLogoutTenantLoginPath();
+  toast.success(successMessage);
+  yield put(
+    loginSucceeded({
+      id: session.user.id,
+      email: session.user.email,
+      tenantId: session.user.tenantId,
+      tenantRole: session.user.tenantRole,
+      displayName: session.user.displayName,
+    }),
+  );
+  yield put(tenantSubscriptionPromptRequested());
+}
+
 function* handleTenantLogin(
   action: ReturnType<typeof tenantLoginRequested>,
 ): Generator {
@@ -84,25 +125,85 @@ function* handleTenantLogin(
       tenantRole: action.payload.tenantRole,
     };
     const response = (yield call(LOGIN, payload)) as Awaited<ReturnType<typeof LOGIN>>;
-    const session = response.data.data;
+    const result = response.data.data;
 
-    storeAuthTokens(session.accessToken, session.refreshToken);
-    clearPostLogoutTenantLoginPath();
-    toast.success('Signed in successfully');
-    yield put(
-      loginSucceeded({
-        id: session.user.id,
-        email: session.user.email,
-        tenantId: session.user.tenantId,
-        tenantRole: session.user.tenantRole,
-        displayName: session.user.displayName,
-      }),
-    );
-    yield put(tenantSubscriptionPromptRequested());
+    // 2FA account: the password alone bought a challenge, not a session.
+    if (isMfaRequiredResult(result)) {
+      yield put(
+        mfaChallengeIssued({
+          challengeToken: result.challengeToken,
+          methods: result.methods,
+          expiresAt: result.expiresAt,
+          email: action.payload.email,
+        }),
+      );
+      return;
+    }
+
+    yield* establishTenantSession(result, 'Signed in successfully');
   } catch (error: unknown) {
     const message = getApiErrorMessage(error);
     toast.error(message);
     yield put(loginFailed(message));
+  }
+}
+
+function* handleTenantLoginCodeRequest(
+  action: ReturnType<typeof tenantLoginCodeRequested>,
+): Generator {
+  try {
+    yield put(loginCodeRequestStarted());
+    const response = (yield call(REQUEST_LOGIN_CODE, {
+      email: action.payload.email,
+      authScope: 'tenant',
+      tenantRole: action.payload.tenantRole,
+    })) as Awaited<ReturnType<typeof REQUEST_LOGIN_CODE>>;
+
+    // The server answers the same way for unknown addresses, so this branch is
+    // reached whether or not a code was actually sent.
+    const result = response.data.data;
+    toast.success(response.data.message);
+    yield put(
+      mfaChallengeIssued({
+        challengeToken: result.challengeToken,
+        methods: result.methods,
+        expiresAt: result.expiresAt,
+        email: action.payload.email,
+      }),
+    );
+  } catch (error: unknown) {
+    const message = getApiErrorMessage(error, 'Unable to send a sign-in code');
+    toast.error(message);
+    yield put(loginCodeRequestFailed(message));
+  }
+}
+
+function* handleTenantMfaVerify(
+  action: ReturnType<typeof tenantMfaVerifyRequested>,
+): Generator {
+  const challenge = (yield select(
+    (state: RootState) => state.tenantAuth.mfaChallenge,
+  )) as RootState['tenantAuth']['mfaChallenge'];
+
+  if (challenge === null) {
+    yield put(
+      mfaVerifyFailed('This sign-in request expired. Please sign in again.'),
+    );
+    return;
+  }
+
+  try {
+    yield put(mfaVerifyStarted());
+    const response = (yield call(VERIFY_MFA, {
+      challengeToken: challenge.challengeToken,
+      code: action.payload.code,
+    })) as Awaited<ReturnType<typeof VERIFY_MFA>>;
+
+    yield* establishTenantSession(response.data.data, response.data.message);
+  } catch (error: unknown) {
+    const message = getApiErrorMessage(error);
+    toast.error(message);
+    yield put(mfaVerifyFailed(message));
   }
 }
 
@@ -266,6 +367,8 @@ function* handleTenantOrganizationUpdate(
 export function* tenantAuthSaga(): Generator {
   yield all([
     takeLatest(tenantLoginRequested.type, handleTenantLogin),
+    takeLatest(tenantMfaVerifyRequested.type, handleTenantMfaVerify),
+    takeLatest(tenantLoginCodeRequested.type, handleTenantLoginCodeRequest),
     takeLatest(tenantRegisterRequested.type, handleTenantRegister),
     takeLatest(tenantAcceptInviteRequested.type, handleTenantAcceptInvite),
     takeLatest(logoutRequested.type, handleLogout),
