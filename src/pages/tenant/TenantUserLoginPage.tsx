@@ -40,7 +40,7 @@ export function TenantUserLoginPage() {
             Sign in to your workspace
           </h1>
           <p className="text-muted-foreground mx-auto mt-1 max-w-md text-xs leading-snug sm:text-sm">
-            Use the email and password from your invitation.
+            Use the email from your invitation to continue.
           </p>
         </div>
 
